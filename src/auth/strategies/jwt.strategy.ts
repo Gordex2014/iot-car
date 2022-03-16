@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
@@ -15,6 +15,7 @@ import { Strategies } from '../enums';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, Strategies.JWT) {
   private readonly _prisma: PrismaService;
+  private readonly _logger = new Logger(JwtStrategy.name);
 
   constructor(configService: ConfigService, prisma: PrismaService) {
     super({
@@ -31,6 +32,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, Strategies.JWT) {
       },
     });
 
+    if (!user) {
+      return null;
+    }
+
     if (!user.isActive) {
       return null;
     }
@@ -39,7 +44,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, Strategies.JWT) {
     delete user.authProvider;
     delete user.isActive;
 
-    // if we are returning null, a 401 Unauthorized will be returned to the client.
+    this._logger.log(
+      `User with id ${user.id} has been authenticated and is accessing the api`,
+    );
     return user;
   }
 }

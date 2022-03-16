@@ -2,6 +2,7 @@ import {
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -10,12 +11,14 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessTokenDto, LocalSignUpDto, LocalSignInDto } from './dtos';
+import { AuthProvider } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
   private readonly _prismaService: PrismaService;
   private readonly _jwtService: JwtService;
   private readonly _configService: ConfigService;
+  private readonly _logger = new Logger(AuthService.name);
 
   constructor(
     prismaService: PrismaService,
@@ -35,11 +38,9 @@ export class AuthService {
    * @throws a 500 error if the user could not be created due to an internal error
    */
   async localSignUp(dto: LocalSignUpDto): Promise<AccessTokenDto> {
-    // Generate the password hash
     const passwordHash = await argon.hash(dto.password);
 
     try {
-      // Save the user to the database
       const user = await this._prismaService.user.create({
         data: {
           email: dto.email,
@@ -47,17 +48,18 @@ export class AuthService {
           firstName: dto.firstName,
           lastName: dto.lastName,
           username: dto.username,
-          authProvider: dto.authProvider,
+          authProvider: AuthProvider.LOCAL,
           updatedAt: new Date(Date.now()),
         },
       });
 
-      // Return the jwt
+      this._logger.log(`User with id ${user.id} created successfully`);
       return this.signToken(user.id, user.email);
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
         // If the user is trying to create a field with the constraint unique
         if (error.code === 'P2002') {
+          this._logger.log(`User with email ${dto.email} already exists`);
           throw new ForbiddenException('User already exists');
         }
       }
@@ -89,6 +91,9 @@ export class AuthService {
     });
 
     if (!user) {
+      this._logger.log(
+        `User with email or username ${dto.usernameOrEmail} not found`,
+      );
       throw new ForbiddenException('Incorrect password or email');
     }
 
@@ -96,10 +101,11 @@ export class AuthService {
     const pwIsCorrect = await argon.verify(user.password, dto.password);
 
     if (!pwIsCorrect) {
+      this._logger.log(`Incorrect password for user with id ${user.id}`);
       throw new ForbiddenException('Incorrect password or email');
     }
 
-    // Return the jwt
+    this._logger.log(`User with id ${user.id} signed in successfully`);
     return this.signToken(user.id, user.email);
   }
 

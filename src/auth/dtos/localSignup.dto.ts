@@ -1,4 +1,3 @@
-import { AuthProvider } from '@prisma/client';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 
 export class LocalSignUpDto {
@@ -21,6 +20,4 @@ export class LocalSignUpDto {
   @IsNotEmpty()
   @IsString()
   password: string;
-
-  authProvider = AuthProvider.LOCAL;
 }
