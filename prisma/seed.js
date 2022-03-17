@@ -11,7 +11,7 @@ async function main() {
       email: 'admin@admin.com',
       firstName: 'Admin',
       lastName: 'Admin',
-      password: await argon.hash('admin'),
+      password: await argon.hash('adminpw'),
       username: 'admin',
       authProvider: 'LOCAL',
       isActive: true,
