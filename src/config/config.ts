@@ -1,5 +1,5 @@
 export default () => ({
-  port: parseInt(process.env.RECORDING_SERVICE_PORT, 10) || 3003,
+  port: parseInt(process.env.HTTP_PORT, 10) || 3003,
   db: {
     url:
       process.env.DATABASE_URL ||
