@@ -9,6 +9,7 @@
     "prisma:dev:deploy": "prisma migrate deploy",
     "db:dev:rm": "docker-compose -f docker-compose.development.yaml rm -s -f -v",
     "db:dev:up": "docker-compose -f docker-compose.development.yaml up -d",
+    "db:dev:start": "yarn db:dev:rm && yarn db:dev:up",
     "db:dev:restart": "yarn db:dev:rm && yarn db:dev:up && sleep 1 && yarn prisma:dev:deploy",
     "prebuild": "rimraf dist",
     "build": "nest build",
