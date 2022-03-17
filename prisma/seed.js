@@ -15,6 +15,7 @@ async function main() {
       username: 'admin',
       authProvider: 'LOCAL',
       isActive: true,
+      role: 'ADMIN',
     },
   });
   console.log(admin);

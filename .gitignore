@@ -3,7 +3,7 @@
 /node_modules
 
 # Prisma migrations
-/prisma/migrations
+/prisma/migrations/*
 
 # Logs
 logs
