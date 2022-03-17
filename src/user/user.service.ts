@@ -100,6 +100,7 @@ export class UserService {
         where: { id },
         data: {
           ...dto,
+          updatedAt: new Date(Date.now()),
         },
       });
 
@@ -155,6 +156,7 @@ export class UserService {
         where: { id },
         data: {
           password: await argon.hash(dto.newPassword),
+          updatedAt: new Date(Date.now()),
         },
       });
       this._logger.log(`Password of user with id ${id} updated`);
@@ -186,6 +188,7 @@ export class UserService {
         where: { id },
         data: {
           isActive: false,
+          updatedAt: new Date(Date.now()),
         },
       });
       this._logger.log(`Account of user with id ${id} deactivated`);
