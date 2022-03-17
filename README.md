@@ -14,7 +14,7 @@ This service is intended to be used by other services to authenticate users.
 
     $ npx prisma migrate dev
 
-    To seed the database with a user with admin privileges (admin/admin):
+    To seed the database with a user with admin privileges (admin:adminpw):
 
     $ npx prisma db seed
 

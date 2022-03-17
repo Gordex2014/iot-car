@@ -1,13 +1,19 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Logger,
   Post,
+  UseGuards,
 } from '@nestjs/common';
+import { User } from '@prisma/client';
+
 import { AuthService } from './auth.service';
+import { GetUser } from './decorators';
 import { LocalSignInDto, LocalSignUpDto } from './dtos';
+import { JwtGuard } from './guards';
 
 @Controller('api/v1/auth')
 export class AuthController {
@@ -31,5 +37,12 @@ export class AuthController {
       `Trying to sign up user with email or username ${dto.usernameOrEmail}`,
     );
     return await this._authService.localSignIn(dto);
+  }
+
+  @Get('renew')
+  @UseGuards(JwtGuard)
+  renew(@GetUser() user: User) {
+    this._logger.log(`Renewing a token for user with id ${user.id}`);
+    return this._authService.renewToken(user);
   }
 }

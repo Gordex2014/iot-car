@@ -8,10 +8,10 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as argon from 'argon2';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
+import { AuthProvider, User } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessTokenDto, LocalSignUpDto, LocalSignInDto } from './dtos';
-import { AuthProvider } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -106,6 +106,15 @@ export class AuthService {
     }
 
     this._logger.log(`User with id ${user.id} signed in successfully`);
+    return this.signToken(user.id, user.email);
+  }
+
+  /**
+   * Generates a new jwt for the user with the provided id
+   * @param user The user to renew the token for
+   * @returns a valid jwt.
+   */
+  async renewToken(user: User): Promise<AccessTokenDto> {
     return this.signToken(user.id, user.email);
   }
 

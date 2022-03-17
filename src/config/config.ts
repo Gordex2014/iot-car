@@ -6,7 +6,7 @@ export default () => ({
       'postgresql://postgres:123@localhost:5432/dev?schema=public',
   },
   jwt: {
-    expiration: process.env.JWT_EXPIRATION || '24h',
+    expiration: process.env.JWT_EXPIRATION || '7h',
     secret: process.env.JWT_SECRET || 'super-secret',
   },
 });
