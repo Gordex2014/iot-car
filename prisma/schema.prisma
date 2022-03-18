@@ -22,25 +22,35 @@ enum AuthProvider {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isActive Boolean @default(true)
-  role Role @default(USER)
-  authProvider AuthProvider 
-  email    String @unique
-  username String @unique
-  password String?
-  firstName String
-  lastName  String
+  id           Int          @id @default(autoincrement())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  isActive     Boolean      @default(true)
+  role         Role         @default(USER)
+  authProvider AuthProvider
+  email        String       @unique
+  username     String       @unique
+  password     String?
+  firstName    String
+  lastName     String
+
   @@map("users")
 }
 
-model Temperatures {
-  id        Int      @id @default(autoincrement())
-  sensorId  String @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  temperatures Json
-  @@map("temperatures")
+model TemperatureSensor {
+  id   String            @id @unique
+  data TemepratureData[]
+
+  @@map("temperature-sensor")
+}
+
+model TemepratureData {
+  id          Int      @id @default(autoincrement())
+  temperature Int
+  date        DateTime
+
+  sensorId String
+  sensor   TemperatureSensor @relation(fields: [sensorId], references: [id])
+
+  @@map("temperature-data")
 }
