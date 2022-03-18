@@ -9,4 +9,9 @@ export default () => ({
     expiration: process.env.JWT_EXPIRATION || '7h',
     secret: process.env.JWT_SECRET || 'super-secret',
   },
+  mqtt: {
+    broker: {
+      url: process.env.MQTT_BROKER_URL || 'mqtt://test.mosquitto.org:1883',
+    },
+  },
 });
