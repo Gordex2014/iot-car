@@ -35,3 +35,12 @@ model User {
   lastName  String
   @@map("users")
 }
+
+model Temperatures {
+  id        Int      @id @default(autoincrement())
+  sensorId  String @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  temperatures Json
+  @@map("temperatures")
+}

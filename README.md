@@ -1,6 +1,6 @@
-# General purpose authentication service
+# Iot Car
 
-This service is intended to be used by other services to authenticate users.
+This is the server to manage a remote car with multiple sensor reads.
 
 ## Setup
 
@@ -17,6 +17,14 @@ This service is intended to be used by other services to authenticate users.
     To seed the database with a user with admin privileges (admin:adminpw):
 
     $ npx prisma db seed
+
+    Start the services in dev mode:
+
+    $ yarn start:dev
+
+    In other terminal:
+
+    $ yarn start:dev:mqtt
 
 ## Usage
 
