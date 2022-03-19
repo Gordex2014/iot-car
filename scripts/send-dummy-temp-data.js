@@ -6,6 +6,7 @@ const argv = require('./config/yargs');
 
 const host = argv.h;
 const topic = argv.t;
+const sensorId = argv.s;
 
 console.log(
   `Sending dummy temperature data to the topic ${topic} every two seconds`,
@@ -15,6 +16,6 @@ console.log('Press Ctrl+C to stop');
 cron.schedule('*/2 * * * * *', () => {
   const randomTemp = Math.floor(Math.random() * (25 - 10 + 1)) + 10;
   exec(
-    `mosquitto_pub -h ${host} -t ${topic} -m '{"temperature": "${randomTemp}","sensorId":"random-id-12"}' -q 1 -d`,
+    `mosquitto_pub -h ${host} -t ${topic} -m '{"temperature": "${randomTemp}","sensorId":"${sensorId}"}' -q 1 -d`,
   );
 });

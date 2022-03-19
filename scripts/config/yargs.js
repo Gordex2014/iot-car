@@ -12,6 +12,13 @@ const argv = require('yargs')
     demandOption: false,
     describe: 'Topic to send data to',
   })
+  .option('s', {
+    alias: 'sensorId',
+    type: 'string',
+    demandOption: false,
+    default: 'sensor-1',
+    describe: 'Topic to send data to',
+  })
   .check((argv, options) => {
     if (!argv.t) {
       throw 'Topic is required';

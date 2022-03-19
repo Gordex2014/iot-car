@@ -39,12 +39,12 @@ model User {
 
 model TemperatureSensor {
   id   String            @id @unique
-  data TemepratureData[]
+  data TemperatureData[]
 
   @@map("temperature-sensor")
 }
 
-model TemepratureData {
+model TemperatureData {
   id          Int      @id @default(autoincrement())
   temperature Int
   date        DateTime

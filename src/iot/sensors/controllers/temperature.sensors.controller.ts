@@ -18,7 +18,7 @@ export class TemperatureSensorsController {
 
   @MessagePattern(SensorTopics.TEMPERATURE)
   async receiveTemperatureRead(@Payload() payload: TemperatureSensorDto) {
-    await this._temperatureSensorService.saveTemperatureToCache(payload);
+    await this._temperatureSensorService.saveTemperatureData(payload);
   }
 
   @Get(':sensorId')
