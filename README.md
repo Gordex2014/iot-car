@@ -4,6 +4,12 @@ This is the server to manage a remote car with multiple sensor reads.
 
 ## Setup
 
+    If you don't have yarn installed, run the following command:
+
+    $ npm i -g yarn
+
+    Install the dependencies:
+
     $ yarn
 
     Turn on docker and the first time run:
