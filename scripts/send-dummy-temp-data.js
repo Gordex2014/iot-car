@@ -16,6 +16,6 @@ console.log('Press Ctrl+C to stop');
 cron.schedule('*/2 * * * * *', () => {
   const randomTemp = Math.floor(Math.random() * (25 - 10 + 1)) + 10;
   exec(
-    `mosquitto_pub -h ${host} -t ${topic} -m '{"temperature": "${randomTemp}","sensorId":"${sensorId}"}' -q 1 -d`,
+    `mosquitto_pub -h ${host} -p 1883 -t ${topic} -m '{"temperature": "${randomTemp}","sensorId":"${sensorId}"}' -q 1 -d`,
   );
 });

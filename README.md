@@ -37,3 +37,11 @@ Once you completed the setup, you can use the following commands to start the se
     If you changed the schema.prisma file, you can use the following commands to start the service:
 
     $ yarn db:dev:restart
+
+If you want to simulate a dummy temperature sensor, you can use the following commands:
+
+    $ node scripts/send-dummy-temp-data.js -h your-mqtt-broker-ip -t your-topic -s your-sensor-id
+
+Please make sure to install mosquitto and mosquitto_clients before running the script.
+
+This will save dummy information to the database every 30 seconds.
