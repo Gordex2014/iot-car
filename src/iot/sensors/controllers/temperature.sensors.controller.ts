@@ -21,20 +21,37 @@ export class TemperatureSensorsController {
     await this._temperatureSensorService.saveTemperatureData(payload);
   }
 
-  @Get(':sensorId')
+  @Get('cache/:sensorId')
   @UseGuards(JwtGuard)
   async getTemperatureFromCache(
     @Param('sensorId') sensorId: string,
     @GetUser() user: User,
   ) {
-    const tempData =
+    const temperatureData =
       await this._temperatureSensorService.getTemperatureFromCache(sensorId);
 
     this._logger.log(
-      `User ${user.id} requested temperature data of sensor ${sensorId}`,
+      `User ${user.id} requested cached temperature data of sensor ${sensorId}`,
     );
     return {
-      data: tempData,
+      data: temperatureData,
+    };
+  }
+
+  @Get('db/:sensorId')
+  @UseGuards(JwtGuard)
+  async getTemperatureFromDb(
+    @Param('sensorId') sensorId: string,
+    @GetUser() user: User,
+  ) {
+    const temperatureData =
+      await this._temperatureSensorService.getTemperatureFromDatabase(sensorId);
+
+    this._logger.log(
+      `User ${user.id} requested persisted temperature data of sensor ${sensorId}`,
+    );
+    return {
+      data: temperatureData,
     };
   }
 }

@@ -1,5 +1,6 @@
 import { CACHE_MANAGER, Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron, SchedulerRegistry } from '@nestjs/schedule';
+import { TemperatureData } from '@prisma/client';
 import { Cache } from 'cache-manager';
 import { TimeInMsEnums } from '../../../common/enums';
 import { CronExpressionsEnum } from '../../../common/enums/cron.enums';
@@ -34,6 +35,8 @@ export class TemperatureSensorsService {
    * temperature at the beginning of the array, the data of a specific
    * sensor is saved in the cache with the following key: `temperature:${sensorId}`
    * and have a maximum size of `MAX_TEMPERATURE_CACHE_SIZE`.
+   * Also adds a new interval to save the last data of the cache in the database
+   * for every iteration of the interval.
    * @param dto Temperature sensor data and sensor id
    */
   async saveTemperatureData(dto: TemperatureSensorDto) {
@@ -114,6 +117,37 @@ export class TemperatureSensorsService {
     return cachedTempData;
   }
 
+  /**
+   * Query the database fo the stored temperature data for the given sensorId
+   * @param sensorId Id of the sensor
+   * @returns An array with the last id of the temperature registry, the temperature and the date
+   */
+  async getTemperatureFromDatabase(
+    sensorId: string,
+  ): Promise<TemperatureData[]> {
+    const temperatures = await this._prismaService.temperatureData.findMany({
+      select: {
+        id: true,
+        temperature: true,
+        date: true,
+        sensor: false,
+        sensorId: true,
+      },
+      where: {
+        sensorId,
+      },
+      orderBy: {
+        id: 'desc',
+      },
+    });
+
+    if (!temperatures) {
+      return [];
+    }
+
+    return temperatures;
+  }
+
   @Cron(CronExpressionsEnum.EVERY_MINUTE)
   async intervalCleaner() {
     const cachedIntervals =
@@ -131,9 +165,11 @@ export class TemperatureSensorsService {
       const timeDiff = Date.now() - new Date(lastInterval).getTime();
       // If the time has expired, remove the interval from the cache
       if (timeDiff >= TimeInMsEnums.ONE_MINUTE) {
-        this._logger.warn(`Interval for ${sensorId} has expired`);
         // Clear the interval
-        this._stopSavePersistentTemperatureData(sensorId);
+        const intervals = this._schedulerRegistry.getIntervals();
+        if (intervals.includes(sensorId)) {
+          this._stopSavePersistentTemperatureData(sensorId);
+        }
         // Save the updated cache
         delete cachedIntervals[sensorId];
         await this._cacheManager.set<TemperatureIntervalCacheRegistry>(
@@ -206,13 +242,16 @@ export class TemperatureSensorsService {
       >(`temperature:${sensorId}`);
 
       // Save the last data of the cache in the database
-      await this._prismaService.temepratureData.create({
+      await this._prismaService.temperatureData.create({
         data: {
-          temperature: temperatureInfo[0].temperature,
-          date: temperatureInfo[0].date,
+          temperature: Number(temperatureInfo[0].temperature),
+          date: new Date(temperatureInfo[0].date),
           sensorId: sensor.id,
         },
       });
+      this._logger.log(
+        `Saved temperature data for ${sensorId} in the persistent database`,
+      );
     };
 
     const interval = setInterval(callback, milliseconds);
@@ -225,6 +264,6 @@ export class TemperatureSensorsService {
    */
   private _stopSavePersistentTemperatureData(name: string) {
     this._schedulerRegistry.deleteInterval(name);
-    this._logger.warn(`Interval ${name} deleted!`);
+    this._logger.log(`Stopped saving process for the sensor ${name}`);
   }
 }
