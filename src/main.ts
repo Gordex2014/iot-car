@@ -18,8 +18,6 @@ async function bootstrap() {
   );
   const port = configureService.get<number>('port');
 
-  await app.listen(port, () =>
-    logger.log(`Auth service running on port ${port}.`),
-  );
+  await app.listen(port, () => logger.log(`Server running on port ${port}.`));
 }
 bootstrap();
