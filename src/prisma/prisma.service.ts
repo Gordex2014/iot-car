@@ -1,4 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
 
@@ -8,7 +13,12 @@ import { PrismaClient } from '@prisma/client';
  * service.
  */
 @Injectable()
-export class PrismaService extends PrismaClient {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
+  private readonly _logger = new Logger(PrismaService.name);
+
   constructor(config: ConfigService) {
     super({
       datasources: {
@@ -17,5 +27,15 @@ export class PrismaService extends PrismaClient {
         },
       },
     });
+  }
+
+  async onModuleInit() {
+    await this.$connect();
+    this._logger.log('Database connected');
+  }
+
+  async onModuleDestroy() {
+    await this.$disconnect();
+    this._logger.log('Database disconnected');
   }
 }
