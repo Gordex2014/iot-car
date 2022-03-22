@@ -33,7 +33,7 @@ export class TemperatureSensorsService {
   /**
    * Adds a temperature to the cache for the given sensorId, adds the
    * temperature at the beginning of the array, the data of a specific
-   * sensor is saved in the cache with the following key: `temperature:${sensorId}`
+   * sensor is saved in the cache with the following key: `data:temperature:${sensorId}`
    * and have a maximum size of `MAX_TEMPERATURE_CACHE_SIZE`.
    * Also adds a new interval to save the last data of the cache in the database
    * for every iteration of the interval.
@@ -42,7 +42,7 @@ export class TemperatureSensorsService {
   async saveTemperatureData(dto: TemperatureSensorDto) {
     let temperatureInfo = await this._cacheManager.get<
       TemperatureSensorCacheRegistry[]
-    >(`temperature:${dto.sensorId}`);
+    >(`data:temperature:${dto.sensorId}`);
 
     // If the cache doesn't exist, create it
     if (!temperatureInfo) {
@@ -58,13 +58,13 @@ export class TemperatureSensorsService {
 
     // Add the new temperature to the cache
     temperatureInfo.unshift({
-      date: new Date(Date.now()),
+      date: new Date(),
       temperature: dto.temperature,
     });
 
     // Save the cache
     await this._cacheManager.set(
-      `temperature:${dto.sensorId}`,
+      `data:temperature:${dto.sensorId}`,
       temperatureInfo,
     );
 
@@ -89,7 +89,7 @@ export class TemperatureSensorsService {
     }
 
     // Update the interval cache registry with the sensorId entrance
-    cachedIntervals[dto.sensorId] = new Date(Date.now());
+    cachedIntervals[dto.sensorId] = new Date();
 
     // Save the interval cache registry
     await this._cacheManager.set<TemperatureIntervalCacheRegistry>(
@@ -108,7 +108,7 @@ export class TemperatureSensorsService {
   ): Promise<TemperatureSensorCacheRegistry[]> {
     const cachedTempData = await this._cacheManager.get<
       TemperatureSensorCacheRegistry[]
-    >(`temperature:${sensorId}`);
+    >(`data:temperature:${sensorId}`);
 
     if (!cachedTempData) {
       return [];
@@ -188,7 +188,7 @@ export class TemperatureSensorsService {
   private async _createEmptyTemperatureInfoCache(
     sensorId: string,
   ): Promise<TemperatureSensorCacheRegistry[]> {
-    await this._cacheManager.set(`temperature:${sensorId}`, []);
+    await this._cacheManager.set(`data:temperature:${sensorId}`, []);
     return [];
   }
 
@@ -239,7 +239,7 @@ export class TemperatureSensorsService {
       // Get the cached data of the sensor
       const temperatureInfo = await this._cacheManager.get<
         TemperatureSensorCacheRegistry[]
-      >(`temperature:${sensorId}`);
+      >(`data:temperature:${sensorId}`);
 
       // Save the last data of the cache in the database
       await this._prismaService.temperatureData.create({

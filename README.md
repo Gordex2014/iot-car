@@ -20,6 +20,10 @@ This is the server to manage a remote car with multiple sensor reads.
 
     $ npx prisma migrate dev
 
+    Then generate the client artifacts:
+
+    $ npx prisma generate
+
     To seed the database with a user with admin privileges (admin:adminpw):
 
     $ npx prisma db seed
