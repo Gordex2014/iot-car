@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { User } from '@prisma/client';
-import { NumericIdParamDto } from 'src/common/dtos';
+import { NumericIdParamDto } from '../common/dtos';
 import { GetUser } from '../auth/decorators';
 import { JwtGuard } from '../auth/guards';
 import { UpdateUserInfoDto, UpdateUserPasswordDto } from './dtos';

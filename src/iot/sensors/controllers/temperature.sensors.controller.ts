@@ -3,7 +3,7 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { User } from '@prisma/client';
 import { GetUser } from '../../../auth/decorators';
 import { JwtGuard } from '../../../auth/guards';
-import { TemperatureSensorDto } from '../dtos';
+import { OutSensorsCachedDataDto, OutTemperatureSensorDto } from '../dtos';
 import { SensorTopics } from '../enums';
 import { TemperatureSensorsService } from '../services';
 
@@ -17,7 +17,7 @@ export class TemperatureSensorsController {
   }
 
   @MessagePattern(SensorTopics.TEMPERATURE)
-  async receiveTemperatureRead(@Payload() payload: TemperatureSensorDto) {
+  async receiveTemperatureRead(@Payload() payload: OutTemperatureSensorDto) {
     await this._temperatureSensorService.saveTemperatureData(payload);
   }
 
@@ -43,7 +43,7 @@ export class TemperatureSensorsController {
   async getTemperatureFromDb(
     @Param('sensorId') sensorId: string,
     @GetUser() user: User,
-  ) {
+  ): Promise<OutSensorsCachedDataDto> {
     const temperatureData =
       await this._temperatureSensorService.getTemperatureFromDatabase(sensorId);
 

@@ -1,11 +1,19 @@
-import { CACHE_MANAGER, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  CACHE_MANAGER,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { Cron, SchedulerRegistry } from '@nestjs/schedule';
 import { TemperatureData } from '@prisma/client';
 import { Cache } from 'cache-manager';
 import { TimeInMsEnums } from '../../../common/enums';
 import { CronExpressionsEnum } from '../../../common/enums/cron.enums';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { TemperatureSensorDto } from '../dtos';
+import { OutTemperatureSensorDto } from '../dtos';
+import { TempOutgoingEvents } from '../enums';
+import { TemperatureSensorsGateway } from '../gateways/temperature.sensors.gateway';
 import {
   TemperatureIntervalCacheRegistry,
   TemperatureSensorCacheRegistry,
@@ -16,16 +24,20 @@ export class TemperatureSensorsService {
   private readonly _cacheManager: Cache;
   private readonly _schedulerRegistry: SchedulerRegistry;
   private readonly _prismaService: PrismaService;
+  private readonly _temperatureSensorsGateway: TemperatureSensorsGateway;
   private readonly _logger = new Logger(TemperatureSensorsService.name);
 
   constructor(
     @Inject(CACHE_MANAGER) cacheManager: Cache,
     schedulerRegistry: SchedulerRegistry,
     prismaService: PrismaService,
+    @Inject(forwardRef(() => TemperatureSensorsGateway))
+    temperatureSensorsGateway: TemperatureSensorsGateway,
   ) {
     this._cacheManager = cacheManager;
     this._schedulerRegistry = schedulerRegistry;
     this._prismaService = prismaService;
+    this._temperatureSensorsGateway = temperatureSensorsGateway;
   }
 
   MAX_TEMPERATURE_CACHE_SIZE = 30;
@@ -39,7 +51,38 @@ export class TemperatureSensorsService {
    * for every iteration of the interval.
    * @param dto Temperature sensor data and sensor id
    */
-  async saveTemperatureData(dto: TemperatureSensorDto) {
+  async saveTemperatureData(dto: OutTemperatureSensorDto) {
+    // Check if the sensor is active
+    let activeSensors = await this._cacheManager.get<string[]>(
+      'sensors:temperature',
+    );
+
+    // If the sensor is not active, creates a new registry for the sensor
+    if (!activeSensors) {
+      activeSensors = await this._createEmptyActiveSensorsCache();
+    }
+
+    // If the sensor is not active, creates a new registry for the sensor
+    if (!activeSensors.includes(dto.sensorId)) {
+      activeSensors.push(dto.sensorId);
+
+      // Since a new sensor is active, we need to notify the gateway
+      // We want to send the data as { data: OutActiveTemperatureSensorsDto }
+      this._temperatureSensorsGateway.emitMessage(
+        TempOutgoingEvents.TEMPERATURE_ACTIVE_SENSORS,
+        {
+          data: activeSensors,
+        },
+      );
+    }
+
+    // Wether the sensor is active or not, creates a new registry for the sensor in the cache
+    await this._cacheManager.set<string[]>(
+      'sensors:temperature',
+      activeSensors,
+    );
+
+    // Get the temperature data from the cache
     let temperatureInfo = await this._cacheManager.get<
       TemperatureSensorCacheRegistry[]
     >(`data:temperature:${dto.sensorId}`);
@@ -68,6 +111,16 @@ export class TemperatureSensorsService {
       temperatureInfo,
     );
 
+    // Emit the new temperature data to the gateway
+    // In this case we want to emit the data as { data: OutSensorsCachedDataDto }
+    this._temperatureSensorsGateway.emitMessage(
+      `${TempOutgoingEvents.TEMPERATURE_UPDATE}-${dto.sensorId}`,
+      {
+        data: temperatureInfo,
+      },
+    );
+
+    // Check of the sensor has an attached interval
     let cachedIntervals =
       await this._cacheManager.get<TemperatureIntervalCacheRegistry>(
         `intervals:temperature`,
@@ -118,6 +171,22 @@ export class TemperatureSensorsService {
   }
 
   /**
+   * Retrieves the active sensors from the cache
+   * @returns An array with the ids of the active temperature sensors
+   */
+  async getActiveTemperatureSensors(): Promise<string[]> {
+    const activeSensors = await this._cacheManager.get<string[]>(
+      'sensors:temperature',
+    );
+
+    if (!activeSensors) {
+      return [];
+    }
+
+    return activeSensors;
+  }
+
+  /**
    * Query the database fo the stored temperature data for the given sensorId
    * @param sensorId Id of the sensor
    * @returns An array with the last id of the temperature registry, the temperature and the date
@@ -148,6 +217,12 @@ export class TemperatureSensorsService {
     return temperatures;
   }
 
+  /**
+   * Checks if the interval and the last data of the cache for the given sensorId
+   * are separated, if the threshold is reached, cleans the interval and removes
+   * it from the cache.
+   * @returns If there are no active intervals to be cleaned
+   */
   @Cron(CronExpressionsEnum.EVERY_MINUTE)
   async intervalCleaner() {
     const cachedIntervals =
@@ -203,6 +278,15 @@ export class TemperatureSensorsService {
       {},
     );
     return {};
+  }
+
+  /**
+   * Creates a new registry in the cache to save the list of all active sensors
+   * @returns An empty array of strings
+   */
+  private async _createEmptyActiveSensorsCache(): Promise<string[]> {
+    await this._cacheManager.set<string[]>('sensors:temperature', []);
+    return [];
   }
 
   /**
