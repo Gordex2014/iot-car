@@ -62,12 +62,15 @@ export class TemperatureSensorsGateway
    */
   @SubscribeMessage(TempIncomingEvents.TEMPERATURE_DATA)
   async handleMessage(client: Socket, payload: IncTemperatureSensorDto) {
-    this._logger.log(`Received temperature data from ${payload.sensorId}`);
+    this._logger.log(`Requested temperature data from ${payload.sensorId}`);
     const cachedData =
       await this._temperatureSensorsService.getTemperatureFromCache(
         payload.sensorId,
       );
-    client.emit(TempOutgoingEvents.TEMPERATURE_UPDATE, { data: cachedData });
+    client.emit(
+      `${TempOutgoingEvents.TEMPERATURE_UPDATE}-${payload.sensorId}`,
+      { data: cachedData },
+    );
   }
 
   /**
