@@ -46,7 +46,7 @@ model TemperatureSensor {
 
 model TemperatureData {
   id          Int      @id @default(autoincrement())
-  temperature Int
+  temperature Float
   date        DateTime
 
   sensorId String
