@@ -39,10 +39,10 @@ export class TemperatureSensorsGateway
 
     this.clients.push(client);
 
-    const activeSensors =
-      await this._temperatureSensorsService.getActiveTemperatureSensors();
-    client.emit(TempOutgoingEvents.TEMPERATURE_ACTIVE_SENSORS, {
-      data: activeSensors,
+    const registeredSensors =
+      await this._temperatureSensorsService.getRegisteredTemperatureSensors();
+    client.emit(TempOutgoingEvents.TEMPERATURE_REGISTERED_SENSORS, {
+      data: registeredSensors,
     });
   }
 

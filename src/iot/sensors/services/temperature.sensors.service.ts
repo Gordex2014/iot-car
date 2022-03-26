@@ -5,38 +5,35 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { Cron, SchedulerRegistry } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { TemperatureData } from '@prisma/client';
 import { Cache } from 'cache-manager';
-import { TimeInMsEnums } from '../../../common/enums';
 import { CronExpressionsEnum } from '../../../common/enums/cron.enums';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { IncTemperatureSensorDataDto } from '../dtos';
 import { TempOutgoingEvents } from '../enums';
 import { TemperatureSensorsGateway } from '../gateways/temperature.sensors.gateway';
-import {
-  TemperatureIntervalCacheRegistry,
-  TemperatureSensorCacheRegistry,
-} from '../types';
+import { TemperatureSensorCacheRegistry } from '../types';
+import { SensorsService } from './sensors.service';
 
 @Injectable()
 export class TemperatureSensorsService {
   private readonly _cacheManager: Cache;
-  private readonly _schedulerRegistry: SchedulerRegistry;
   private readonly _prismaService: PrismaService;
+  private readonly _sensorsService: SensorsService;
   private readonly _temperatureSensorsGateway: TemperatureSensorsGateway;
   private readonly _logger = new Logger(TemperatureSensorsService.name);
 
   constructor(
     @Inject(CACHE_MANAGER) cacheManager: Cache,
-    schedulerRegistry: SchedulerRegistry,
     prismaService: PrismaService,
+    sensorsService: SensorsService,
     @Inject(forwardRef(() => TemperatureSensorsGateway))
     temperatureSensorsGateway: TemperatureSensorsGateway,
   ) {
     this._cacheManager = cacheManager;
-    this._schedulerRegistry = schedulerRegistry;
     this._prismaService = prismaService;
+    this._sensorsService = sensorsService;
     this._temperatureSensorsGateway = temperatureSensorsGateway;
   }
 
@@ -47,39 +44,30 @@ export class TemperatureSensorsService {
    * temperature at the beginning of the array, the data of a specific
    * sensor is saved in the cache with the following key: `data:temperature:${sensorId}`
    * and have a maximum size of `MAX_TEMPERATURE_CACHE_SIZE`.
-   * Also adds a new interval to save the last data of the cache in the database
-   * for every iteration of the interval.
    * @param dto Temperature sensor data and sensor id
    */
   async saveTemperatureData(dto: IncTemperatureSensorDataDto) {
-    // Check if the sensor is active
-    let activeSensors = await this._cacheManager.get<string[]>(
-      'sensors:temperature',
-    );
+    // Check if the sensor is registered
+    const registeredSensors = await this.getRegisteredTemperatureSensors();
 
-    // If the sensor is not active, creates a new registry for the sensor
-    if (!activeSensors) {
-      activeSensors = await this._createEmptyActiveSensorsCache();
-    }
-
-    // If the sensor is not active, creates a new registry for the sensor
-    if (!activeSensors.includes(dto.sensorId)) {
-      activeSensors.push(dto.sensorId);
+    // If the sensor is not registered, creates a new registry for the sensor
+    if (!registeredSensors.includes(dto.sensorId)) {
+      registeredSensors.push(dto.sensorId);
 
       // Since a new sensor is active, we need to notify the gateway
       // We want to send the data as { data: OutActiveTemperatureSensorsDto }
       this._temperatureSensorsGateway.emitMessage(
-        TempOutgoingEvents.TEMPERATURE_ACTIVE_SENSORS,
+        TempOutgoingEvents.TEMPERATURE_REGISTERED_SENSORS,
         {
-          data: activeSensors,
+          data: registeredSensors,
         },
       );
     }
 
-    // Wether the sensor is active or not, creates a new registry for the sensor in the cache
+    // Wether the sensor is registered or not, creates a new registry for the sensor in the cache
     await this._cacheManager.set<string[]>(
       'sensors:temperature',
-      activeSensors,
+      registeredSensors,
     );
 
     // Get the temperature data from the cache
@@ -119,36 +107,6 @@ export class TemperatureSensorsService {
         data: temperatureInfo,
       },
     );
-
-    // Check of the sensor has an attached interval
-    let cachedIntervals =
-      await this._cacheManager.get<TemperatureIntervalCacheRegistry>(
-        `intervals:temperature`,
-      );
-
-    // If there is no active interval for the given sensorId, create an empty array
-    if (!cachedIntervals) {
-      cachedIntervals = await this._createTemperatureIntervalCacheRegistry();
-    }
-
-    // Check if the interval for the given sensorId is active, if not, create an interval
-    if (!cachedIntervals[dto.sensorId]) {
-      // Creates an interval to save the last data of the cache for the persisted database
-      // following the given interval
-      this._savePersistentTemperatureData(
-        dto.sensorId,
-        TimeInMsEnums.THIRTY_SECONDS,
-      );
-    }
-
-    // Update the interval cache registry with the sensorId entrance
-    cachedIntervals[dto.sensorId] = new Date();
-
-    // Save the interval cache registry
-    await this._cacheManager.set<TemperatureIntervalCacheRegistry>(
-      'intervals:temperature',
-      cachedIntervals,
-    );
   }
 
   /**
@@ -174,16 +132,16 @@ export class TemperatureSensorsService {
    * Retrieves the active sensors from the cache
    * @returns An array with the ids of the active temperature sensors
    */
-  async getActiveTemperatureSensors(): Promise<string[]> {
-    const activeSensors = await this._cacheManager.get<string[]>(
+  async getRegisteredTemperatureSensors(): Promise<string[]> {
+    const registeredSensors = await this._cacheManager.get<string[]>(
       'sensors:temperature',
     );
 
-    if (!activeSensors) {
-      return [];
+    if (!registeredSensors) {
+      return this._createEmptyRegisteredSensorsCache();
     }
 
-    return activeSensors;
+    return registeredSensors;
   }
 
   /**
@@ -218,38 +176,65 @@ export class TemperatureSensorsService {
   }
 
   /**
-   * Checks if the interval and the last data of the cache for the given sensorId
-   * are separated, if the threshold is reached, cleans the interval and removes
-   * it from the cache.
-   * @returns If there are no active intervals to be cleaned
+   * Saves the temperatures of the registered temperature sensors in the database
+   * every `SENSOR_DATA_SAVE_INTERVAL` time, this time can be passed as an argument.
+   * Only if these sensors are also active in the cache (The active property is managed
+   * by the sensors service, since a sensor can stream multiple information)
+   * @see SensorsService
    */
-  @Cron(CronExpressionsEnum.EVERY_MINUTE)
-  async intervalCleaner() {
-    const cachedIntervals =
-      await this._cacheManager.get<TemperatureIntervalCacheRegistry>(
-        `intervals:temperature`,
-      );
-    // If there is no active intervals, return
-    if (!cachedIntervals) {
-      return;
-    }
-    // For every active interval, check if the time has expired to
-    // stop the saving process to the database
-    for (const sensorId in cachedIntervals) {
-      const lastInterval = cachedIntervals[sensorId];
-      const timeDiff = Date.now() - new Date(lastInterval).getTime();
-      // If the time has expired, remove the interval from the cache
-      if (timeDiff >= TimeInMsEnums.ONE_MINUTE) {
-        // Clear the interval
-        const intervals = this._schedulerRegistry.getIntervals();
-        if (intervals.includes(sensorId)) {
-          this._stopSavePersistentTemperatureData(sensorId);
+  @Cron(CronExpressionsEnum.EVERY_TWO_MINUTES)
+  async saveLastTemperatureData() {
+    const registeredSensors = await this.getRegisteredTemperatureSensors();
+    const systemSensors = await this._sensorsService.getSystemSensors();
+
+    const activatedSensors: string[] = [];
+
+    // Iterate over the system sensors and check if the sensor is active
+    Object.entries(systemSensors).forEach(([sensorId, activated]) => {
+      if (activated) {
+        activatedSensors.push(sensorId);
+      }
+    });
+
+    // Create a new array with the sensors that are active and are part of the
+    // registered temperature sensors
+    const registeredAndActivatedSensors = registeredSensors.filter((sensorId) =>
+      activatedSensors.includes(sensorId),
+    );
+
+    // Iterate over the sensors that are active and are part of the registered temperature sensors
+    // and save the last temperature data
+    for (const sensorId of registeredAndActivatedSensors) {
+      const temperatureInfo = await this.getTemperatureFromCache(sensorId);
+
+      if (temperatureInfo.length > 0) {
+        // Check if the sensor exists in the database
+        const sensor = await this._prismaService.temperatureSensor.findUnique({
+          where: {
+            id: sensorId,
+          },
+        });
+
+        if (!sensor) {
+          await this._prismaService.temperatureSensor.create({
+            data: {
+              id: sensorId,
+            },
+          });
         }
-        // Save the updated cache
-        delete cachedIntervals[sensorId];
-        await this._cacheManager.set<TemperatureIntervalCacheRegistry>(
-          'intervals:temperature',
-          cachedIntervals,
+
+        const lastTemperature = Number(temperatureInfo[0].temperature);
+        const lastTemperatureDate = new Date(temperatureInfo[0].date);
+
+        await this._prismaService.temperatureData.create({
+          data: {
+            temperature: lastTemperature,
+            date: lastTemperatureDate,
+            sensorId,
+          },
+        });
+        this._logger.log(
+          `Temperature data saved for sensor ${sensorId} with value ${lastTemperature}`,
         );
       }
     }
@@ -263,91 +248,19 @@ export class TemperatureSensorsService {
   private async _createEmptyTemperatureInfoCache(
     sensorId: string,
   ): Promise<TemperatureSensorCacheRegistry[]> {
-    await this._cacheManager.set(`data:temperature:${sensorId}`, []);
-    return [];
-  }
-
-  /**
-   * Creates an empty array if there is no active interval for temperatures
-   * with a time to live of two minutes
-   * @returns An empty array
-   */
-  private async _createTemperatureIntervalCacheRegistry(): Promise<TemperatureIntervalCacheRegistry> {
-    await this._cacheManager.set<TemperatureIntervalCacheRegistry>(
-      `intervals:temperature`,
-      {},
+    await this._cacheManager.set<TemperatureSensorCacheRegistry[]>(
+      `data:temperature:${sensorId}`,
+      [],
     );
-    return {};
+    return [];
   }
 
   /**
    * Creates a new registry in the cache to save the list of all active sensors
    * @returns An empty array of strings
    */
-  private async _createEmptyActiveSensorsCache(): Promise<string[]> {
+  private async _createEmptyRegisteredSensorsCache(): Promise<string[]> {
     await this._cacheManager.set<string[]>('sensors:temperature', []);
     return [];
-  }
-
-  /**
-   * Creates an interval to save the last data of the cache for the given sensorId
-   * in the database following the given interval
-   * @param sensorId Name of the interval, in this case the name of the sensor
-   * @param milliseconds Interval time in milliseconds
-   */
-  private _savePersistentTemperatureData(
-    sensorId: string,
-    milliseconds: number,
-  ) {
-    const callback = async () => {
-      // Get the general data of the sensor
-      let sensor = await this._prismaService.temperatureSensor.findUnique({
-        where: {
-          id: sensorId,
-        },
-      });
-
-      // If the sensor doesn't exist, create it
-      if (!sensor) {
-        await this._prismaService.temperatureSensor.create({
-          data: {
-            id: sensorId,
-          },
-        });
-
-        sensor = {
-          id: sensorId,
-        };
-      }
-
-      // Get the cached data of the sensor
-      const temperatureInfo = await this._cacheManager.get<
-        TemperatureSensorCacheRegistry[]
-      >(`data:temperature:${sensorId}`);
-
-      // Save the last data of the cache in the database
-      await this._prismaService.temperatureData.create({
-        data: {
-          temperature: Number(temperatureInfo[0].temperature),
-          date: new Date(temperatureInfo[0].date),
-          sensorId: sensor.id,
-        },
-      });
-      this._logger.log(
-        `Saved temperature data for ${sensorId} in the persistent database`,
-      );
-    };
-
-    const interval = setInterval(callback, milliseconds);
-    this._schedulerRegistry.addInterval(sensorId, interval);
-  }
-
-  /**
-   * Stops the recurring information saving for the given sensorId
-   * @param name Name of the interval, in this case the name of the sensor
-   */
-  private _stopSavePersistentTemperatureData(name: string) {
-    this._schedulerRegistry.deleteInterval(name);
-    this._logger.log(`Stopped saving process for the sensor ${name}`);
   }
 }

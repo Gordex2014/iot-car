@@ -32,10 +32,6 @@ This is the server to manage a remote car with multiple sensor reads.
 
     $ yarn start:dev
 
-    In other terminal:
-
-    $ yarn start:dev:mqtt
-
 ## Usage
 
 Once you completed the setup, you can use the following commands to start the service:

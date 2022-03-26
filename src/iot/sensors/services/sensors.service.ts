@@ -1,6 +1,6 @@
 import { CACHE_MANAGER, Inject, Injectable, Logger } from '@nestjs/common';
 import { Cache } from 'cache-manager';
-import { ActiveSensorsInCache } from '../types';
+import { SystemSensorsInCache } from '../types';
 
 @Injectable()
 export class SensorsService {
@@ -18,28 +18,28 @@ export class SensorsService {
    */
   async activateSensor(sensorId: string): Promise<void> {
     // Check if the sensor is already activated
-    let activeSensorsObj = await this._cacheManager.get<ActiveSensorsInCache>(
-      'sensors:active',
+    let systemSensorsObj = await this._cacheManager.get<SystemSensorsInCache>(
+      'sensors:system',
     );
 
     // If there are no active sensors, create a new cache entry
-    if (!activeSensorsObj) {
-      activeSensorsObj = await this._createActiveSensorsCache();
+    if (!systemSensorsObj) {
+      systemSensorsObj = await this._createSystemSensorsCache();
     }
 
     // Check if the sensor is already activated
-    if (activeSensorsObj[sensorId]) {
+    if (systemSensorsObj[sensorId]) {
       this._logger.warn(`Sensor ${sensorId} is already activated.`);
       return;
     }
 
     // Activate the sensor
-    activeSensorsObj[sensorId] = true;
+    systemSensorsObj[sensorId] = true;
 
     // Save the new active sensors to the cache
-    await this._cacheManager.set<ActiveSensorsInCache>(
-      'sensors:active',
-      activeSensorsObj,
+    await this._cacheManager.set<SystemSensorsInCache>(
+      'sensors:system',
+      systemSensorsObj,
     );
 
     this._logger.log(`Sensor ${sensorId} is streaming data.`);
@@ -52,45 +52,57 @@ export class SensorsService {
    */
   async deactivateSensor(sensorId: string): Promise<void> {
     // Check if the sensor is already activated
-    let activeSensorsObj = await this._cacheManager.get<ActiveSensorsInCache>(
-      'sensors:active',
+    let systemSensorsObj = await this._cacheManager.get<SystemSensorsInCache>(
+      'sensors:system',
     );
 
     // If there are no active sensors, create a new cache entry
-    if (!activeSensorsObj) {
-      activeSensorsObj = await this._createActiveSensorsCache();
+    if (!systemSensorsObj) {
+      systemSensorsObj = await this._createSystemSensorsCache();
     }
 
     // Check if the sensor is already activated
-    if (!activeSensorsObj[sensorId]) {
+    if (!systemSensorsObj[sensorId]) {
       this._logger.warn(`Sensor ${sensorId} is already deactivated.`);
       return;
     }
 
     // Deactivate the sensor
-    activeSensorsObj[sensorId] = false;
+    systemSensorsObj[sensorId] = false;
 
     // Save the new active sensors to the cache
-    await this._cacheManager.set<ActiveSensorsInCache>(
-      'sensors:active',
-      activeSensorsObj,
+    await this._cacheManager.set<SystemSensorsInCache>(
+      'sensors:system',
+      systemSensorsObj,
     );
 
     this._logger.log(`Sensor ${sensorId} is no longer streaming data.`);
   }
 
-  /**
-   * Creates a new empty registry for the active sensors in the cache
-   * @returns An empty object that will be used as a cache for the active sensors
-   */
-  private async _createActiveSensorsCache(): Promise<ActiveSensorsInCache> {
-    const newActiveSensors: ActiveSensorsInCache = {};
-
-    await this._cacheManager.set<ActiveSensorsInCache>(
-      'sensors:active',
-      newActiveSensors,
+  async getSystemSensors(): Promise<SystemSensorsInCache> {
+    let systemSensorsObj = await this._cacheManager.get<SystemSensorsInCache>(
+      'sensors:system',
     );
 
-    return newActiveSensors;
+    if (!systemSensorsObj) {
+      systemSensorsObj = await this._createSystemSensorsCache();
+    }
+
+    return systemSensorsObj;
+  }
+
+  /**
+   * Creates a new empty registry for the system sensors in the cache
+   * @returns An empty object that will be used as a cache for the system sensors
+   */
+  private async _createSystemSensorsCache(): Promise<SystemSensorsInCache> {
+    const newSystemSensors: SystemSensorsInCache = {};
+
+    await this._cacheManager.set<SystemSensorsInCache>(
+      'sensors:system',
+      newSystemSensors,
+    );
+
+    return newSystemSensors;
   }
 }
