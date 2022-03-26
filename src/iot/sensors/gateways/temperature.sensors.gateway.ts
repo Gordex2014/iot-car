@@ -7,7 +7,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { IncTemperatureSensorDto } from '../dtos';
+import { IncTemperatureSensorDataRequestDto } from '../dtos';
 import { TempIncomingEvents, TempOutgoingEvents } from '../enums';
 import { TemperatureSensorsService } from '../services';
 
@@ -61,7 +61,10 @@ export class TemperatureSensorsGateway
    * @returns The cached data for the given sensor id
    */
   @SubscribeMessage(TempIncomingEvents.TEMPERATURE_DATA)
-  async handleMessage(client: Socket, payload: IncTemperatureSensorDto) {
+  async handleMessage(
+    client: Socket,
+    payload: IncTemperatureSensorDataRequestDto,
+  ) {
     this._logger.log(`Requested temperature data from ${payload.sensorId}`);
     const cachedData =
       await this._temperatureSensorsService.getTemperatureFromCache(

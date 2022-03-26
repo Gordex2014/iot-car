@@ -11,7 +11,7 @@ import { Cache } from 'cache-manager';
 import { TimeInMsEnums } from '../../../common/enums';
 import { CronExpressionsEnum } from '../../../common/enums/cron.enums';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { OutTemperatureSensorDto } from '../dtos';
+import { IncTemperatureSensorDataDto } from '../dtos';
 import { TempOutgoingEvents } from '../enums';
 import { TemperatureSensorsGateway } from '../gateways/temperature.sensors.gateway';
 import {
@@ -51,7 +51,7 @@ export class TemperatureSensorsService {
    * for every iteration of the interval.
    * @param dto Temperature sensor data and sensor id
    */
-  async saveTemperatureData(dto: OutTemperatureSensorDto) {
+  async saveTemperatureData(dto: IncTemperatureSensorDataDto) {
     // Check if the sensor is active
     let activeSensors = await this._cacheManager.get<string[]>(
       'sensors:temperature',
