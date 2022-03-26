@@ -11,6 +11,24 @@ export interface IncTemperatureSensorDataDto {
 }
 
 /**
+ * Incoming data transfer object from the iot device to
+ * tell the server that the sensor is activated.
+ * @param sensorId is the id of the sensor
+ */
+export interface IncTemperatureSensorActivatedDto {
+  sensorId: string;
+}
+
+/**
+ * Incoming data transfer object from the iot device to
+ * tell the server that the sensor is deactivated.
+ * @param sensorId is the id of the sensor
+ */
+export interface IncTemperatureSensorDeactivateDto {
+  sensorId: string;
+}
+
+/**
  * Incoming data transfer object from the socket client
  * asking for the temperature data of a sensor
  * @param sensorId is the id of the sensor

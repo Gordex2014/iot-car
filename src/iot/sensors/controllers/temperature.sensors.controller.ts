@@ -1,10 +1,8 @@
 import { Controller, Get, Logger, Param, UseGuards } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
 import { User } from '@prisma/client';
 import { GetUser } from '../../../auth/decorators';
 import { JwtGuard } from '../../../auth/guards';
-import { OutSensorsCachedDataDto, IncTemperatureSensorDataDto } from '../dtos';
-import { TemperatureSensorTopics } from '../enums';
+import { OutSensorsCachedDataDto } from '../dtos';
 import { TemperatureSensorsService } from '../services';
 
 @Controller('api/v1/sensors/temperature')
@@ -14,13 +12,6 @@ export class TemperatureSensorsController {
 
   constructor(temperatureSensorService: TemperatureSensorsService) {
     this._temperatureSensorService = temperatureSensorService;
-  }
-
-  @MessagePattern(TemperatureSensorTopics.TEMPERATURE_DATA)
-  async receiveTemperatureRead(
-    @Payload() payload: IncTemperatureSensorDataDto,
-  ) {
-    await this._temperatureSensorService.saveTemperatureData(payload);
   }
 
   @Get('cache/:sensorId')

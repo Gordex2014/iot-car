@@ -3,7 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TemperatureSensorsController } from './controllers';
 import { TemperatureSensorsService } from './services';
-import { TemperatureSensorsGateway } from './gateways/temperature.sensors.gateway';
+import { TemperatureSensorMessages } from './messages';
+import { TemperatureSensorsGateway } from './gateways';
 
 const MQTT_CLIENT_NAME = 'IOT_SENSORS_MODULE';
 
@@ -24,6 +25,10 @@ const MQTT_CLIENT_NAME = 'IOT_SENSORS_MODULE';
     ]),
   ],
   controllers: [TemperatureSensorsController],
-  providers: [TemperatureSensorsService, TemperatureSensorsGateway],
+  providers: [
+    TemperatureSensorMessages,
+    TemperatureSensorsGateway,
+    TemperatureSensorsService,
+  ],
 })
 export class SensorsModule {}
