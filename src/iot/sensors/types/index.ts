@@ -1,1 +1,2 @@
-export * from './temperature.sensor.cache.types';
+export * from './sensors.cache.types';
+export * from './temperature.sensors.cache.types';

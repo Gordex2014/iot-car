@@ -1,1 +1,2 @@
-export * from './temperature.sensor.dto';
+export * from './sensors.dto';
+export * from './temperature.sensors.dto';
