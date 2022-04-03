@@ -1,6 +1,7 @@
 import { forwardRef, Inject, Logger } from '@nestjs/common';
 import {
   OnGatewayConnection,
+  OnGatewayDisconnect,
   OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
@@ -13,12 +14,12 @@ import { TemperatureSensorsService } from '../services';
 
 @WebSocketGateway()
 export class TemperatureSensorsGateway
-  implements OnGatewayInit, OnGatewayConnection
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   private readonly _temperatureSensorsService: TemperatureSensorsService;
   private readonly _logger = new Logger(TemperatureSensorsGateway.name);
   @WebSocketServer() private readonly _wsServer: Server;
-  private clients: Socket[] = [];
+  private _clients: Socket[] = [];
 
   constructor(
     @Inject(forwardRef(() => TemperatureSensorsService))
@@ -37,7 +38,7 @@ export class TemperatureSensorsGateway
       `Client with ws id: ${client.id} connected to the ${TemperatureSensorsGateway.name} gateway`,
     );
 
-    this.clients.push(client);
+    this._clients.push(client);
 
     const registeredSensors =
       await this._temperatureSensorsService.getRegisteredTemperatureSensors();
@@ -47,10 +48,21 @@ export class TemperatureSensorsGateway
   }
 
   /**
+   * This method is called when the gateway is disconnected.
+   * @param client Is the socket client that is disconnected from the gateway.
+   */
+  handleDisconnect(client: Socket) {
+    this._logger.log(
+      `Client with ws id: ${client.id} disconnected from the ${TemperatureSensorsGateway.name} gateway`,
+    );
+    this._clients = this._clients.filter((c) => c.id !== client.id);
+  }
+
+  /**
    * This method is called when the gateway is initialized.
    */
   afterInit() {
-    this._logger.log('Websocket server initialized');
+    this._logger.log('Temperature sensors websocket server initialized');
   }
 
   /**

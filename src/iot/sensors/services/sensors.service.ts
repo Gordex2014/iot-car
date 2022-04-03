@@ -1,14 +1,28 @@
-import { CACHE_MANAGER, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  CACHE_MANAGER,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { Cache } from 'cache-manager';
+import { SensorsOutgoingEvents } from '../enums';
+import { SensorsGateway } from '../gateways/sensors.gateway';
 import { SystemSensorsInCache } from '../types';
 
 @Injectable()
 export class SensorsService {
+  private readonly _sensorsGateway: SensorsGateway;
   private readonly _cacheManager: Cache;
   private readonly _logger = new Logger(SensorsService.name);
 
-  constructor(@Inject(CACHE_MANAGER) cacheManager: Cache) {
+  constructor(
+    @Inject(CACHE_MANAGER) cacheManager: Cache,
+    @Inject(forwardRef(() => SensorsGateway))
+    sensorsGateway: SensorsGateway,
+  ) {
     this._cacheManager = cacheManager;
+    this._sensorsGateway = sensorsGateway;
   }
 
   /**
@@ -40,6 +54,14 @@ export class SensorsService {
     await this._cacheManager.set<SystemSensorsInCache>(
       'sensors:system',
       systemSensorsObj,
+    );
+
+    // Notify all the socket clients the updated sensors data
+    this._sensorsGateway.emitMessage(
+      SensorsOutgoingEvents.SYSTEM_REGISTERED_SENSORS,
+      {
+        data: systemSensorsObj,
+      },
     );
 
     this._logger.log(`Sensor ${sensorId} is streaming data.`);
@@ -74,6 +96,14 @@ export class SensorsService {
     await this._cacheManager.set<SystemSensorsInCache>(
       'sensors:system',
       systemSensorsObj,
+    );
+
+    // Notify all the socket clients the updated sensors data
+    this._sensorsGateway.emitMessage(
+      SensorsOutgoingEvents.SYSTEM_REGISTERED_SENSORS,
+      {
+        data: systemSensorsObj,
+      },
     );
 
     this._logger.log(`Sensor ${sensorId} is no longer streaming data.`);
