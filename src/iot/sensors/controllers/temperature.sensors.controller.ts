@@ -2,7 +2,7 @@ import { Controller, Get, Logger, Param, UseGuards } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { GetUser } from '../../../auth/decorators';
 import { JwtGuard } from '../../../auth/guards';
-import { OutSensorsCachedDataDto } from '../dtos';
+import { OutTemperatureSensorsCachedDataDto } from '../dtos';
 import { TemperatureSensorsService } from '../services';
 
 @Controller('api/v1/sensors/temperature')
@@ -36,7 +36,7 @@ export class TemperatureSensorsController {
   async getTemperatureFromDb(
     @Param('sensorId') sensorId: string,
     @GetUser() user: User,
-  ): Promise<OutSensorsCachedDataDto> {
+  ): Promise<OutTemperatureSensorsCachedDataDto> {
     const temperatureData =
       await this._temperatureSensorService.getTemperatureFromDatabase(sensorId);
 

@@ -24,7 +24,7 @@ export interface IncTemperatureSensorDataRequestDto {
  * @param data is the data that holds the temperature data
  * with the temperature values and dates
  */
-export interface OutSensorsCachedDataDto {
+export interface OutTemperatureSensorsCachedDataDto {
   data: TemperatureSensorCacheRegistry[];
 }
 

@@ -37,9 +37,10 @@ model User {
   @@map("users")
 }
 
-model TemperatureSensor {
-  id   String            @id @unique
-  data TemperatureData[]
+model Sensor {
+  id          String            @id @unique
+  temperature TemperatureData[]
+  humidity    HumidityData[]
 
   @@map("temperature-sensor")
 }
@@ -50,7 +51,18 @@ model TemperatureData {
   date        DateTime
 
   sensorId String
-  sensor   TemperatureSensor @relation(fields: [sensorId], references: [id])
+  sensor   Sensor @relation(fields: [sensorId], references: [id])
 
   @@map("temperature-data")
+}
+
+model HumidityData {
+  id       Int      @id @default(autoincrement())
+  humidity Float
+  date     DateTime
+
+  sensorId String
+  sensor   Sensor @relation(fields: [sensorId], references: [id])
+
+  @@map("humidity-data")
 }

@@ -96,7 +96,7 @@ try:
             time.sleep(1)
 
             humidity_json = json.dumps({"humidity": "{0}".format(
-                temp), "sensorId":  "{0}".format(SENSOR_ID)})
+                humidity), "sensorId":  "{0}".format(SENSOR_ID)})
             print(humidity_json)
             (result2, mid) = mqttc.publish(
                 MOSQUITTO_HUMIDITY_DATA_TOPIC, humidity_json, 0)

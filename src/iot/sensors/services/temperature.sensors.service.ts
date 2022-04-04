@@ -12,7 +12,7 @@ import { CronExpressionsEnum } from '../../../common/enums/cron.enums';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { IncTemperatureSensorDataDto } from '../dtos';
 import { TempOutgoingEvents } from '../enums';
-import { TemperatureSensorsGateway } from '../gateways/temperature.sensors.gateway';
+import { TemperatureSensorsGateway } from '../gateways';
 import { TemperatureSensorCacheRegistry } from '../types';
 import { SensorsService } from './sensors.service';
 
@@ -209,14 +209,14 @@ export class TemperatureSensorsService {
 
       if (temperatureInfo.length > 0) {
         // Check if the sensor exists in the database
-        const sensor = await this._prismaService.temperatureSensor.findUnique({
+        const sensor = await this._prismaService.sensor.findUnique({
           where: {
             id: sensorId,
           },
         });
 
         if (!sensor) {
-          await this._prismaService.temperatureSensor.create({
+          await this._prismaService.sensor.create({
             data: {
               id: sensorId,
             },
